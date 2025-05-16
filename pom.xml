@@ -11,6 +11,7 @@
 	<groupId>com.dss</groupId>
 	<artifactId>jersey-poc-college-admin-parent</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
 	<name>jersey-poc-college-admin-parent</name>
 	<description>A parent Maven project for a Spring Boot + Jersey-based API system using modular architecture. Contains shared configuration and manages API contract and implementation modules.</description>
 	<url/>
@@ -20,6 +21,10 @@
 	<developers>
 		<developer/>
 	</developers>
+	<modules>
+		<module>api</module>
+		<module>api-implementation</module>
+	</modules>
 	<scm>
 		<connection/>
 		<developerConnection/>
