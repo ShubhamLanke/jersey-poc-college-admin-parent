@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.dss</groupId>
-        <artifactId>jersey-poc-college-admin-parent</artifactId>
+        <artifactId>jersey-poc-product-admin-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
@@ -21,6 +21,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jersey</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 
