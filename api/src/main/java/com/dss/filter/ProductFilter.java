@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Data
-public class ProductFilterDTO {
+public class ProductFilter {
     private String name;
     private String category;
     private Double minPrice;

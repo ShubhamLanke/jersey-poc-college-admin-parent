@@ -1,15 +1,18 @@
 package com.dss.service;
 
+import com.dss.dto.CategoryDTO;
 import com.dss.dto.ProductDTO;
 import com.dss.entity.Category;
 import com.dss.entity.Category_;
 import com.dss.entity.Product;
 import com.dss.entity.Product_;
-import com.dss.filter.ProductFilterDTO;
+import com.dss.filter.ProductFilter;
+import com.dss.mapper.ProductMapper;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.*;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,160 +23,227 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService {
 
-    @Autowired
-    private EntityManager entityManager;
 
-//    @Override
-//    public List<Product> getProductsSortedByName() {
-//        CriteriaBuilder cb = em.getCriteriaBuilder();
-//        CriteriaQuery<Product> cq = cb.createQuery(Product.class);
-//
-//        Root<Product> product = cq.from(Product.class);
-//        cq.select(product);
-//        cq.orderBy(cb.asc(product.get(Product_.name))); // Type-safe
-//
-//        return em.createQuery(cq).getResultList();
-//    }
-//
-//    @Override
-//    public List<Product> getAllProductsSortedByPrice() {
-//        CriteriaBuilder cb = em.getCriteriaBuilder();
-//        CriteriaQuery<Product> cq = cb.createQuery(Product.class);
-//
-//        Root<Product> product = cq.from(Product.class);
-//        cq.select(product);
-//        cq.orderBy(cb.asc(product.get(Product_.price))); // Type-safe
-//
-//        return em.createQuery(cq).getResultList();
-//    }
-//
-//    @Override
-//    public Product saveProduct(Product product) {
-//        em.persist(product);
-//        return product;
-//    }
-//
-//    @Override
-//    public Product updateProduct(Long id, Product productData) {
-//        Product existingProduct = em.find(Product.class, id);
-//        if (existingProduct == null) {
-//            throw new IllegalArgumentException("Product with id " + id + " not found.");
-//        }
-//
-//        existingProduct.setName(productData.getName());
-//        existingProduct.setPrice(productData.getPrice());
-//        existingProduct.setAvailable(productData.getAvailable());
-//        existingProduct.setCreatedAt(productData.getCreatedAt());
-//        existingProduct.setCategory(productData.getCategory());
-//
-//        em.merge(existingProduct);
-//        return existingProduct;
-//    }
+    private final EntityManager entityManager;
+
+    @Autowired
+    public ProductServiceImpl(EntityManager entityManager) {
+        this.entityManager = entityManager;
+    }
 
     @Override
-    public List<ProductDTO> findAll(ProductFilterDTO productFilterDTO) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Product> query = criteriaBuilder.createQuery(Product.class);
-        Root<Product> root = query.from(Product.class);
+    public List<ProductDTO> findAll(String name) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Product> cq = cb.createQuery(Product.class);
+        Root<Product> root = cq.from(Product.class);
 
         List<Predicate> predicates = new ArrayList<>();
-        if(Strings.isNotEmpty(productFilterDTO.getName())){
-            predicates.add(criteriaBuilder.like(root.get(Product_.name),productFilterDTO.getName()));
+
+        if (Strings.isNotEmpty(name)) {
+            predicates.add(cb.like(root.get(Product_.name), "%" + name + "%"));
         }
-//        if(Objects.isNull(productFilterDTO.getName())){
-//
-//        }
-        return List.of();
+
+        cq.where(predicates.toArray(new Predicate[0]));
+        List<Product> products = entityManager.createQuery(cq).getResultList();
+
+        return products.stream()
+                .map(ProductMapper::toDTO)
+                .toList();
     }
 
     @Override
-    public List<ProductDTO> findAllByPost(ProductFilterDTO productFilterDTO) {
-        return List.of();
+    public List<ProductDTO> findAllByPost(ProductFilter productFilter) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder(); //TODO order by price
+        CriteriaQuery<Product> cq = cb.createQuery(Product.class);
+        Root<Product> root = cq.from(Product.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (Strings.isNotEmpty(productFilter.getName())) {
+            predicates.add(cb.like(root.get(Product_.name), "%" + productFilter.getName() + "%"));
+        }
+
+        cq.where(predicates.toArray(new Predicate[0]));
+        List<Product> products = entityManager.createQuery(cq).getResultList();
+
+        return products.stream()
+                .map(ProductMapper::toDTO)
+                .toList();
     }
 
     @Override
-    public List<ProductDTO> getAllProductsSortedByName(ProductFilterDTO filterDTO) {
-        return List.of();
+    public List<ProductDTO> getAllProductsSortedByPrice(ProductFilter productFilter) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Product> cq = cb.createQuery(Product.class);
+        Root<Product> root = cq.from(Product.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+        if (Strings.isNotEmpty(productFilter.getName())) {
+            predicates.add(cb.like(root.get(Product_.name), "%" + productFilter.getName() + "%")); //TODO Change the impl for price
+        }
+
+        cq.where(predicates.toArray(new Predicate[0]));
+        cq.orderBy(cb.asc(root.get(Product_.price)));
+
+        List<Product> products = entityManager.createQuery(cq).getResultList();
+
+        return products.stream()
+                .map(ProductMapper::toDTO)
+                .toList();
     }
 
     @Override
-    public List<ProductDTO> getAllProductsSortedByPrice(ProductFilterDTO filter) {
-        return List.of();
+    public List<ProductDTO> filterProducts(ProductFilter filter) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Product> cq = cb.createQuery(Product.class);
+        Root<Product> root = cq.from(Product.class);
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (filter.getStartDate() != null && filter.getEndDate() == null) {
+            int year = filter.getStartDate().getYear();
+            predicates.add(cb.equal(cb.function("YEAR", Integer.class, root.get("createdAt")), year));
+        }
+
+        if (filter.getEndDate() != null && filter.getStartDate() == null) {
+            predicates.add(cb.lessThan(root.get("createdAt"), filter.getEndDate()));
+        }
+
+        if (filter.getStartDate() != null && filter.getEndDate() == null) {
+            predicates.add(cb.greaterThan(root.get("createdAt"), filter.getStartDate()));
+        }
+
+        if (filter.getStartDate() != null && filter.getEndDate() != null) {
+            predicates.add(cb.between(root.get("createdAt"), filter.getStartDate(), filter.getEndDate()));
+        }
+
+        if (filter.getMinPrice() != null && filter.getMaxPrice() != null) {
+            predicates.add(cb.between(root.get("price"), filter.getMinPrice(), filter.getMaxPrice()));
+        }
+
+        if (filter.getMinPrice() != null && filter.getStartDate() != null) {
+            predicates.add(cb.or(
+                    cb.lessThan(root.get("price"), filter.getMinPrice()),
+                    cb.greaterThan(root.get("createdAt"), filter.getStartDate())
+            ));
+        }
+
+        if (filter.getStartDate() != null && filter.getEndDate() != null && filter.getMinPrice() != null) {
+            predicates.add(cb.and(
+                    cb.between(root.get("createdAt"), filter.getStartDate(), filter.getEndDate()),
+                    cb.greaterThan(root.get("price"), filter.getMinPrice())
+            ));
+        }
+
+        if (filter.getEndDate() != null) {
+            CriteriaQuery<Double> maxPriceQuery = cb.createQuery(Double.class);
+            Root<Product> maxRoot = maxPriceQuery.from(Product.class);
+            maxPriceQuery.select(cb.max(maxRoot.get("price")));
+            maxPriceQuery.where(cb.lessThan(maxRoot.get("createdAt"), filter.getEndDate()));
+            Double maxPrice = entityManager.createQuery(maxPriceQuery).getSingleResult();
+            System.out.println("Max Price Before " + filter.getEndDate() + ": " + maxPrice);
+        }
+
+        predicates.add(cb.or(
+                cb.isNull(root.get("price")),
+                cb.isFalse(root.get("available"))
+        ));
+
+        if (filter.getExcludeCategories() != null && !filter.getExcludeCategories().isEmpty()) {
+            predicates.add(cb.not(root.get("category").get("name").in(filter.getExcludeCategories())));
+        }
+
+        if (Boolean.TRUE.equals(filter.getCreatedOnWeekend())) {
+            Expression<Integer> dayOfWeek = cb.function("DAYOFWEEK", Integer.class, root.get("createdAt"));
+            predicates.add(dayOfWeek.in(1, 7)); // Sunday (1) or Saturday (7)
+        }
+
+        if (filter.getStartDate() != null) {
+            int month = filter.getStartDate().getMonthValue();
+            Expression<Integer> exprMonth = cb.function("MONTH", Integer.class, root.get("createdAt"));
+            Expression<Integer> exprYear = cb.function("YEAR", Integer.class, root.get("createdAt"));
+            predicates.add(cb.equal(exprMonth, month));
+        }
+
+        if (filter.getCategory() != null) {
+            LocalDate today = LocalDate.now();
+            LocalDate last25Days = today.minusDays(25);
+            predicates.add(cb.and(
+                    cb.greaterThanOrEqualTo(root.get("createdAt"), last25Days),
+                    cb.equal(root.get("category").get("name"), filter.getCategory())
+            ));
+        }
+
+        cq.where(predicates.toArray(new Predicate[0]));
+
+        List<Product> results = entityManager.createQuery(cq).getResultList();
+        return results.stream().map(ProductMapper::toDTO).toList();
     }
 
-    @Override
-    public List<ProductDTO> filterProducts(ProductFilterDTO filter) {
-        return List.of();
-    }
 
     @Override
-    public Response createProduct(ProductDTO productDTO) {
-        return null;
+    public Response createProduct(ProductDTO productDTO) { //TODO uniquesnedd by prince and name
+        if (productDTO == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Product data is missing").build();
+        }
+
+        Product product = new Product();
+        product.setName(productDTO.getName());
+        product.setPrice(productDTO.getPrice());
+        product.setAvailable(productDTO.getAvailable());
+        Category category = findCategoryByName(productDTO.getCategoryDTO().getName());
+        if (category == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Category not found").build();
+        }
+        product.setCategory(category);
+
+        entityManager.persist(product);
+        return Response.status(Response.Status.CREATED).build();
     }
 
     @Override
     public Response updateProduct(Long id, ProductDTO productDTO) {
-        return null;
+        Product product = entityManager.find(Product.class, id);
+        if (Objects.isNull(product)) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Product not found").build();
+        }
+
+        product.setName(productDTO.getName());
+        product.setPrice(productDTO.getPrice());
+        product.setAvailable(productDTO.getAvailable());
+
+        Category category = findCategoryByName(productDTO.getCategoryDTO().getName());
+        if (Objects.isNull(category)) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Category not found").build();
+        }
+        product.setCategory(category);
+
+        entityManager.merge(product);
+        return Response.ok().build();
     }
 
     @Override
     public void deleteProduct(Long id) {
-        Product product = em.find(Product.class, id);
+        Product product = entityManager.find(Product.class, id);
         if (product != null) {
-            em.remove(product);
+            entityManager.remove(product);
         }
     }
 
-    public List<Product> filterProducts(String name, String categoryName, Double minPrice, Double maxPrice,
-                                        LocalDate startDate, LocalDate endDate, Boolean available, Boolean createdOnWeekend) {
+    private Category findCategoryByName(String categoryName) {
+        if (Strings.isEmpty(categoryName)) return null;
 
-        CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<Product> cq = cb.createQuery(Product.class);
-        Root<Product> product = cq.from(Product.class);
-        Join<Product, Category> category = product.join(Product_.category, JoinType.LEFT);
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Category> cq = cb.createQuery(Category.class);
+        Root<Category> root = cq.from(Category.class);
+        cq.where(cb.equal(root.get("name"), categoryName));
 
-        List<Predicate> predicates = new ArrayList<>();
-
-        if (name != null && !name.isEmpty()) {
-            predicates.add(cb.like(cb.lower(product.get(Product_.name)), "%" + name.toLowerCase() + "%"));
-        }
-
-        if (categoryName != null && !categoryName.isEmpty()) {
-            predicates.add(cb.equal(category.get(Category_.name), categoryName));
-        }
-
-        if (minPrice != null) {
-            predicates.add(cb.greaterThanOrEqualTo(product.get(Product_.price), minPrice));
-        }
-
-        if (maxPrice != null) {
-            predicates.add(cb.lessThanOrEqualTo(product.get(Product_.price), maxPrice));
-        }
-
-        if (available != null) {
-            predicates.add(cb.equal(product.get(Product_.available), available));
-        }
-
-        if (startDate != null) {
-            predicates.add(cb.greaterThanOrEqualTo(product.get(Product_.createdAt), startDate));
-        }
-
-        if (endDate != null) {
-            predicates.add(cb.lessThanOrEqualTo(product.get(Product_.createdAt), endDate));
-        }
-
-        if (createdOnWeekend != null && createdOnWeekend) {
-            Expression<Integer> dayOfWeek = cb.function("dayofweek", Integer.class, product.get(Product_.createdAt));
-            predicates.add(cb.or(cb.equal(dayOfWeek, 1), cb.equal(dayOfWeek, 7)));
-        }
-
-        cq.where(cb.and(predicates.toArray(new Predicate[0])));
-
-        return em.createQuery(cq).getResultList();
+        List<Category> result = entityManager.createQuery(cq).getResultList();
+        return result.isEmpty() ? null : result.get(0);
     }
 }

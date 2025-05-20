@@ -1,36 +1,33 @@
 package com.dss.service;
 
 import com.dss.dto.ProductDTO;
-import com.dss.filter.ProductFilterDTO;
+import com.dss.filter.ProductFilter;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 
 
 @Path("/products")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON_VALUE)
+@Consumes(MediaType.ALL_VALUE)
 public interface ProductService {
 
     @GET
-    List<ProductDTO> findAll(ProductFilterDTO productFilterDTO);
+    List<ProductDTO> findAll(@QueryParam("name") String name);
 
     @POST
     @Path("/fetch-all-products")
-    List<ProductDTO> findAllByPost(ProductFilterDTO productFilterDTO);
-
-    @GET
-    List<ProductDTO> getAllProductsSortedByName(ProductFilterDTO filterDTO);
+    List<ProductDTO> findAllByPost(ProductFilter productFilter);
 
     @POST
     @Path("/sorted-by-price")
-    List<ProductDTO> getAllProductsSortedByPrice(ProductFilterDTO filter);
+    List<ProductDTO> getAllProductsSortedByPrice(ProductFilter productFilter);
 
     @POST
     @Path("/filter")
-    List<ProductDTO> filterProducts(ProductFilterDTO filter);
+    List<ProductDTO> filterProducts(ProductFilter productFilter);
 
     @POST
     Response createProduct(ProductDTO productDTO);
@@ -41,5 +38,5 @@ public interface ProductService {
 
     @DELETE
     @Path("/{id}")
-    Response deleteProduct(@PathParam("id") Long id);
+    void deleteProduct(@PathParam("id") Long id);
 }
